@@ -1,0 +1,164 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Encoding-Converter und sonstige Texttransformationen</title>
+<style>
+textarea {
+  width: 300px;
+  height: 300px;
+}
+.actions {
+  background-color: #ddd;
+  vertical-align: top;
+}
+#actions td, #actions input {
+  font-family: "Arial", "Helvetica", sans-serif;
+  font-size: 13px;
+}
+</style>
+<script src="jquery-1.11.1.min.js"></script>
+<script>
+$(function() {
+
+  function hex(x, digits) {
+    var xs = x.toString(16);
+    if (xs.length >= digits) {
+      return xs;
+    }
+    var s = "000000000000" + xs;
+    return s.substring(s.length - digits);
+  }
+
+  function ltr(conv) {
+    return function() {
+      var text = $('#left').val();
+      var converted = conv(text);
+      $('#right').val(converted);
+    };
+  }
+
+  function rtl(conv) {
+    return function() {
+      var text = $('#right').val();
+      var converted = conv(text);
+      $('#left').val(converted);
+    };
+  }
+
+  function toJava(s) {
+    return s.replace(/[^\x00-\x7f]/g, function(c) {
+      var cp = c.charCodeAt(0);
+      return "\\u" + hex(cp, 4);
+    });
+  }
+
+  function fromJava(s) {
+    return s.replace(/\\u([0-9A-Fa-f]{4})/g, function(_, scp) {
+      var cp = parseInt(scp, 16);
+      return String.fromCharCode(cp);
+    });
+  }
+
+  function rot13(s) {
+    return s.replace(/[A-Za-z]/g, function(c) {
+      var cp = c.charCodeAt(0);
+      var letter = (cp & 0x1F) - 1;
+      var rotatedLetter = (letter + 13) % 26;
+      var rotated = (cp & ~0x1F) | (rotatedLetter + 1);
+      return String.fromCharCode(rotated);
+    });
+  }
+
+  function toHtml(s) {
+    return $('<span/>').text(s).html();
+  }
+
+  function fromHtml(s) {
+    return $('<span/>').html(s).text();
+  }
+
+  function toAsciiHtml(s) {
+    var html = toHtml(s);
+    return html.replace(/[^\x00-\x7F]/g, function(c) {
+      var cp = c.charCodeAt(0);
+      return "&#x" + hex(cp, 4) + ";";
+    });
+  }
+
+  function toUpperCase(s) {
+    return s.toUpperCase();
+  }
+
+  function toLowerCase(s) {
+    return s.toLowerCase();
+  }
+  
+  function ucfirst(s) {
+    return s.substring(0, 1).toUpperCase() + s.substring(1);
+  }
+
+  function generateJavaSetters(s) {
+    var setters = '';
+    s.replace(/"(.+?)"/g, function(_, name) {
+      setters += 'obj.set' + ucfirst(name) + '(...);\n';
+    });
+    return setters;
+  }
+  
+  function generateJavaString(s) {
+    var str = '';
+    s.replace(/(.*)([\r\n]+|$)/g, function(_, line, end) {
+      if (line !== '' || end !== '') {
+        str += '"' + line + '", //\n';
+      }
+    });
+    return str;
+  }
+
+  function button(label, conv) {
+    var $row = $('<tr/>').append(
+      $('<td>').append($('<input type="button" value="«"/>').bind('click', rtl(conv))),
+      $('<td>').text(' ' + label + ' '),
+      $('<td>').append($('<input type="button" value="»"/>').bind('click', ltr(conv)))
+    );
+    $('#actions').append($row);
+  }
+
+  button('to Java', toJava);
+  button('from Java', fromJava);
+  button('to HTML', toHtml);
+  button('from HTML', fromHtml);
+  button('to ASCII HTML', toAsciiHtml);
+  button('encodeURIComponent', encodeURIComponent);
+  button('decodeURIComponent', decodeURIComponent);
+  button('toUpperCase', toUpperCase);
+  button('toLowerCase', toLowerCase);
+  button('rot13', rot13);
+  button('Java Setter', generateJavaSetters);
+  button('Java String', generateJavaString);
+
+});
+</script>
+</head>
+
+<body>
+<form>
+<table>
+<tr>
+<td>
+<textarea id="left"></textarea>
+</td>
+<td class="actions">
+<table>
+<tbody id="actions">
+</tbody>
+</table>
+</td>
+<td>
+<textarea id="right"></textarea>
+</td>
+</th>
+</table>
+</form>
+</body>
+</html>
